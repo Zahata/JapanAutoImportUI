@@ -15,7 +15,7 @@ function fuel(v: string | null) { const m: Record<string,string> = { hybrid:'Х�
 function gear(v: string | null) { const m: Record<string,string> = { automatic:'Автоматик', manual:'Ръчна' }; return v ? (m[v.toLowerCase()] ?? v) : '—'; }
 function titleFor(v: Vehicle) { return v.model || v.main_type || 'Автомобил'; }
 function prettyKey(key: string) { return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
-function prettyValue(value: unknown) {
+function prettyValue(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Да' : 'Не';
   if (Array.isArray(value)) return value.map(prettyValue).join(', ');
