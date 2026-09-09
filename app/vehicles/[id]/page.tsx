@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import type { Vehicle, VehicleDamage, VehicleEquipment, VehicleImage, VehiclePaint, VehiclePriceHistory, VehicleService } from '../../../lib/types';
+import type { Vehicle, VehicleImage } from '../../../lib/types';
 import { getBasePrice, getDocumentsFeeEur, getImportTotal, getTransportEur, getVehicleCountryCode, OUR_COMMISSION_EUR } from '../../../lib/pricing';
 
 function euro(v: number | null) { return v === null ? '—' : new Intl.NumberFormat('bg-BG', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v); }
@@ -28,15 +28,9 @@ export default function VehiclePage() {
   const router = useRouter();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [images, setImages] = useState<VehicleImage[]>([]);
-  const [equipment, setEquipment] = useState<VehicleEquipment[]>([]);
-  const [damages, setDamages] = useState<VehicleDamage[]>([]);
-  const [services, setServices] = useState<VehicleService[]>([]);
-  const [paint, setPaint] = useState<VehiclePaint[]>([]);
-  const [priceHistory, setPriceHistory] = useState<VehiclePriceHistory[]>([]);
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [error, setError] = useState('');
-  const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -47,28 +41,18 @@ export default function VehiclePage() {
       const vehicleData = v.data as Vehicle;
       setVehicle(vehicleData);
 
-      const results = await Promise.allSettled([
-        supabase.from('vehicle_images').select('*').eq('vehicle_id', id).eq('is_document', false).order('sort_order', { ascending: true }),
-        supabase.from('vehicle_equipment').select('*').eq('vehicle_id', id),
-        supabase.from('vehicle_damages').select('*').eq('vehicle_id', id),
-        supabase.from('vehicle_service').select('*').eq('vehicle_id', id),
-        supabase.from('vehicle_paint_thickness').select('*').eq('vehicle_id', id),
-        supabase.from('vehicle_price_history').select('*').eq('vehicle_id', id).order('recorded_at', { ascending: false }),
-      ]);
-      const names = ['images','equipment','damages','services','paint','priceHistory'];
-      const nextErrors: Record<string,string> = {};
-      const rows = results.map((r, i) => {
-        if (r.status === 'rejected') { nextErrors[names[i]] = r.reason?.message ?? 'Грешка при зареждане.'; return null; }
-        if (r.value.error) { nextErrors[names[i]] = r.value.error.message; return null; }
-        return r.value.data ?? [];
-      });
-      setImages((rows[0] as VehicleImage[]) ?? []);
-      setEquipment((rows[1] as VehicleEquipment[]) ?? []);
-      setDamages((rows[2] as VehicleDamage[]) ?? []);
-      setServices((rows[3] as VehicleService[]) ?? []);
-      setPaint((rows[4] as VehiclePaint[]) ?? []);
-      setPriceHistory((rows[5] as VehiclePriceHistory[]) ?? []);
-      setSectionErrors(nextErrors);
+      const result = await supabase
+        .from('vehicle_images')
+        .select('*')
+        .eq('vehicle_id', id)
+        .eq('is_document', false)
+        .order('sort_order', { ascending: true });
+
+      if (result.error) {
+        setError(result.error.message);
+      } else {
+        setImages((result.data as VehicleImage[]) ?? []);
+      }
     })();
   }, [id]);
 
