@@ -199,7 +199,7 @@ export default function HomePage() {
             <h1>Намери автомобила.<br /><em>Ние ще го внесем.</em></h1>
             <p>Реални обяви, актуализирани автоматично. Разглеждай спокойно и виж предварително как се формира крайната цена за внос.</p>
             <div className="hero-actions">
-              <a href="#cars" className="hero-primary">Разгледай наличните автомобили <span>→</span></a>
+              <a href="#cars" className="hero-primary">Разгледай наличните автомобили на търг<span>→</span></a>
               <button type="button" className="hero-secondary" onClick={() => document.getElementById('price-guide')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Как се формира цената</button>
             </div>
           </div>
