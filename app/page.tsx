@@ -210,7 +210,7 @@ export default function HomePage() {
 
         <section className="trust-strip" id="how">
           <div><span className="trust-icon">01</span><div><b>Реални данни</b><small>Актуализират се автоматично</small></div></div>
-          <div><span className="trust-icon">02</span><div><b>Прозрачна крайна цена</b><small>Документи + транспорт + комисионна</small></div></div>
+          <div><span className="trust-icon">02</span><div><b>Прозрачна крайна цена</b><small>Цена на автомобил + документи + транспорт + комисионна</small></div></div>
           <div><span className="trust-icon">03</span><div><b>Подбран инвентар</b><small>Само японски марки</small></div></div>
         </section>
 
@@ -276,11 +276,11 @@ export default function HomePage() {
             </>}
 
             <section id="price-guide" className="transparency-banner">
-              <div><span className="banner-kicker">ЯСНА КРАЙНА ЦЕНА</span><h3>Виждаш крайната цена още преди да заявиш автомобила.</h3><p>Всички разходи по вноса са включени във финалната сума. Нашата фиксирана комисионна е €1 000.</p></div>
+              <div><span className="banner-kicker">ЯСНА КРАЙНА ЦЕНА</span><h3>Виждаш крайната цена още преди да заявиш автомобила.</h3><p>Всички разходи по вноса (автомобил + документи + транспорт) са включени във финалната сума. <br></br>Нашата фиксирана комисионна е €1 000.</p></div>
               <div className="banner-total"><span>Нашата комисионна</span><b>€1 000</b></div>
             </section>
 
-            <footer className="footer">Крайната цена за клиента включва всички изчислени разходи по вноса и <b>€1 000 фиксирана комисионна</b>. Няма скрити посреднически такси.</footer>
+            <footer className="footer">Крайната цена за клиента включва всички изчислени разходи по вноса (автомобил + документи + транспорт) и <b>€1 000 фиксирана комисионна</b>. Няма скрити посреднически такси.</footer>
           </div>
         </section>
       </main>
