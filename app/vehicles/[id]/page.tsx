@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import type { Vehicle, VehicleImage } from '../../../lib/types';
-import { getBasePrice, getDocumentsFeeEur, getImportTotal, getTransportEur, getVehicleCountryCode, OUR_COMMISSION_EUR } from '../../../lib/pricing';
+import { getImportTotal, OUR_COMMISSION_EUR } from '../../../lib/pricing';
 
 function euro(v: number | null) { return v === null ? '—' : new Intl.NumberFormat('bg-BG', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v); }
 function integer(v: unknown) { return v === null || v === undefined || v === '' ? '—' : new Intl.NumberFormat('bg-BG').format(Number(v)); }
@@ -76,11 +76,8 @@ export default function VehiclePage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [lightboxOpen, images.length]);
 
-  const price = vehicle ? getBasePrice(vehicle) : null;
-  const docs = vehicle ? getDocumentsFeeEur(vehicle) : null;
-  const transport = vehicle ? getTransportEur(vehicle) : null;
   const total = vehicle ? getImportTotal(vehicle) : null;
-  const countryCode = vehicle ? getVehicleCountryCode(vehicle) : null;
+  const price = total === null ? null : total - OUR_COMMISSION_EUR;
 
   function goBack() {
     if (window.history.length > 1) router.back();
@@ -119,13 +116,11 @@ export default function VehiclePage() {
           </div>
 
           <aside className="detail-price-card">
-            <div className="price-card-head"><div><span>ПРОЗРАЧНА ЦЕНА</span><small>Всички суми са показани отделно</small></div><span className="price-lock">✓</span></div>
+            <div className="price-card-head"><div><span>КРАЙНА ЦЕНА</span><small>Всички разходи са включени във финалната сума</small></div><span className="price-lock">✓</span></div>
             <Money label="Покупна цена" value={euro(price)} />
-            <Money label={`Документи ${countryCode ? `(${countryCode})` : ''}`} value={docs === null ? 'Очаква стойност' : `+ ${euro(docs)}`} />
-            <Money label="Транспорт" value={transport === null ? 'Очаква стойност' : `+ ${euro(transport)}`} />
             <Money label="Наша комисионна" value={`+ ${euro(OUR_COMMISSION_EUR)}`} accent />
             <div className="price-total"><span>Общо за клиента</span><strong>{total === null ? 'Очаква данни' : euro(total)}</strong></div>
-            <p className="price-note">Комисионната ни е фиксирана на €1 000 и е показана отделно. Крайната сума зависи от актуалните данни за транспорта.</p>
+            <p className="price-note">Нашата комисионна е фиксирана на €1 000. Останалите разходи по вноса са включени в показаната покупна цена.</p>
             <button type="button" className="request-large" onClick={() => { window.location.href = 'viber://chat?number=359877747973'; }}>Запитай за автомобила <span>→</span></button>
           </aside>
         </section>

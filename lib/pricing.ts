@@ -2,6 +2,8 @@ import type { Vehicle } from './types';
 
 export const OUR_COMMISSION_EUR = 1000;
 export const DOCUMENTS_SURCHARGE_EUR = 350;
+export const EXTRA_MARGIN_THRESHOLD_EUR = 10000;
+export const EXTRA_MARGIN_RATE = 0.02;
 
 const DOCUMENT_BASE_BY_COUNTRY: Record<string, number> = {
   AT: 468,
@@ -126,5 +128,13 @@ export function getImportTotal(vehicle: Vehicle): number | null {
   const docs = getDocumentsFeeEur(vehicle);
   const transport = getTransportEur(vehicle);
   if (base === null || docs === null || transport === null) return null;
-  return base + docs + transport + OUR_COMMISSION_EUR;
+
+  // Internal 2% margin for cars above €10,000, included in the displayed
+  // purchase price but kept separate from the fixed €1,000 commission.
+  const landedCost = base + docs + transport;
+  const extraInternalMargin = base > EXTRA_MARGIN_THRESHOLD_EUR
+    ? landedCost * EXTRA_MARGIN_RATE
+    : 0;
+
+  return landedCost + extraInternalMargin + OUR_COMMISSION_EUR;
 }

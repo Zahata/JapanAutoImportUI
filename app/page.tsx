@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import type { Vehicle, VehicleImage } from '../lib/types';
-import { getDocumentsFeeEur, OUR_COMMISSION_EUR, getBasePrice, getImportTotal, getTransportEur } from '../lib/pricing';
+import { OUR_COMMISSION_EUR, getImportTotal } from '../lib/pricing';
 
 const PAGE_SIZE = 24;
 const JAPANESE_BRANDS = ['Toyota', 'Lexus', 'Honda', 'Mazda', 'Nissan', 'Mitsubishi', 'Subaru', 'Suzuki', 'Infiniti'];
@@ -13,6 +13,7 @@ const GEARBOX_OPTIONS: Array<[string,string]> = [['automatic','Автомати�
 const BODY_OPTIONS: Array<[string,string]> = [['SUV','SUV'],['Hatchback','Хечбек'],['Sedan','Седан'],['Wagon','Комби'],['Estate','Комби'],['Coupe','Купе'],['Convertible','Кабрио'],['MPV','MPV']];
 const COUNTRY_OPTIONS: Array<[string,string]> = [['AT','Австрия (AT)'],['BE','Белгия (BE)'],['DE','Германия (DE)'],['DK','Дания (DK)'],['ES','Испания (ES)'],['FI','Финландия (FI)'],['FR','Франция (FR)'],['IT','Италия (IT)'],['NL','Нидерландия (NL)'],['PL','Полша (PL)'],['PT','Португалия (PT)'],['SE','Швеция (SE)']];
 const YEARS = Array.from({length: 16}, (_, i) => String(2025 - i));
+type VehicleOption = { make: string | null; model: string | null; main_type: string | null; stock_number: string | null };
 
 function euro(value: number | null) {
   return value === null ? '—' : new Intl.NumberFormat('bg-BG', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
@@ -29,10 +30,21 @@ function gear(value: string | null) {
   return value ? (map[value.toLowerCase()] ?? value) : '—';
 }
 
+// Keep only the model name and engine displacement in the model dropdown.
+// Examples: "Auris 1.3 Cool" -> "Auris 1.3"; "Q60 3.0 V6 Sport Tech AWD" -> "Q60 3.0".
+function modelDropdownLabel(value: string): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  const match = normalized.match(/\b\d+[.,]\d+(?:\s*[Ll])?\b|\b\d+\s*[Ll]\b/i);
+  if (!match || match.index === undefined) return normalized;
+  return `${normalized.slice(0, match.index + match[0].length)}`.trim();
+}
+
 export default function HomePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [images, setImages] = useState<Record<string, VehicleImage>>({});
+  const [vehicleOptions, setVehicleOptions] = useState<VehicleOption[]>([]);
   const [brand, setBrand] = useState('Всички');
+  const [model, setModel] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('last_seen_at.desc');
   const [yearFrom, setYearFrom] = useState('');
@@ -62,7 +74,51 @@ export default function HomePage() {
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const filtersActive = Boolean((brand && brand !== 'Всички') || query || yearFrom || yearTo || priceFrom || priceTo || mileageTo || fuelType || gearbox || bodyType || country || minPower || minSeats);
+  const filtersActive = Boolean((brand && brand !== 'Всички') || model || query || yearFrom || yearTo || priceFrom || priceTo || mileageTo || fuelType || gearbox || bodyType || country || minPower || minSeats);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const pageSize = 1000;
+      const collected: VehicleOption[] = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase
+          .from('vehicles')
+          .select('make,model,main_type,stock_number')
+          .eq('status', 'active')
+          .range(offset, offset + pageSize - 1);
+        if (error || !data?.length) break;
+        collected.push(...((data as VehicleOption[]) ?? []));
+        if (data.length < pageSize) break;
+      }
+      if (!cancelled) setVehicleOptions(collected);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const modelOptions = useMemo(() => {
+    const source = brand === 'Всички' ? vehicleOptions : vehicleOptions.filter(v => (v.make ?? '') === brand);
+    const seenLabels = new Set<string>();
+    return source
+      .map(v => {
+        const raw = (v.model || v.main_type || '').trim();
+        return raw ? { value: raw, label: modelDropdownLabel(raw) } : null;
+      })
+      .filter((v): v is { value: string; label: string } => Boolean(v))
+      .filter(v => {
+        const key = v.label.toLocaleLowerCase('bg');
+        if (seenLabels.has(key)) return false;
+        seenLabels.add(key);
+        return true;
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, 'bg'));
+  }, [brand, vehicleOptions]);
+
+  const modelLabels = useMemo(() => new Set(modelOptions.map(option => option.label)), [modelOptions]);
+
+  useEffect(() => {
+    if (model && !modelLabels.has(model)) setModel('');
+  }, [model, modelLabels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,8 +129,12 @@ export default function HomePage() {
       const to = from + PAGE_SIZE - 1;
       let req = supabase.from('vehicles').select('*', { count: 'exact' }).eq('status', 'active');
       if (brand !== 'Всички') req = req.eq('make', brand);
-      const q = query.trim().replace(/,/g, ' ');
-      if (q) req = req.or(`make.ilike.%${q}%,model.ilike.%${q}%,stock_number.ilike.%${q}%,main_type.ilike.%${q}%`);
+      if (model) {
+        const modelPattern = model.replace(/[%_]/g, m => `\\${m}`);
+        req = req.or(`model.ilike.${modelPattern}%,main_type.eq.${model}`);
+      }
+      const q = query.trim();
+      if (q) req = req.ilike('stock_number', `%${q}%`);
       if (yearFrom) req = req.gte('year', Number(yearFrom));
       if (yearTo) req = req.lte('year', Number(yearTo));
       if (fuelType) req = req.eq('fuel_type', fuelType);
@@ -95,7 +155,7 @@ export default function HomePage() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [brand, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
+  }, [brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
 
   useEffect(() => {
     (async () => {
@@ -110,6 +170,7 @@ export default function HomePage() {
 
   function clearFilters() {
     setBrand('Всички');
+    setModel('');
     setQuery('');
     setYearFrom(''); setYearTo('');
     setPriceFrom(''); setPriceTo('');
@@ -149,7 +210,7 @@ export default function HomePage() {
 
         <section className="trust-strip" id="how">
           <div><span className="trust-icon">01</span><div><b>Реални данни</b><small>Актуализират се автоматично</small></div></div>
-          <div><span className="trust-icon">02</span><div><b>Прозрачна крайна цена</b><small>Документи + транспорт + комисионна</small></div></div>
+          <div><span className="trust-icon">02</span><div><b>Прозрачна крайна цена</b><small>Цена на автомобил + документи + транспорт + комисионна</small></div></div>
           <div><span className="trust-icon">03</span><div><b>Подбран инвентар</b><small>Само японски марки</small></div></div>
         </section>
 
@@ -157,17 +218,16 @@ export default function HomePage() {
           <aside className={`filters ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
             <div className="filters-head"><div><span className="filters-overline">Търсене</span><h3>Филтри</h3></div><button className="clear" onClick={clearFilters}>Изчисти</button></div>
 
-            <div className="filter-group compact">
-              <span className="filter-label">Марка</span>
-              <div className="brand-list">
-                <button className={`brand-btn ${brand === 'Всички' ? 'selected' : ''}`} onClick={() => { setBrand('Всички'); setPage(0); }}>Всички</button>
-                {JAPANESE_BRANDS.map(b => <button key={b} className={`brand-btn ${brand === b ? 'selected' : ''}`} onClick={() => { setBrand(b); setPage(0); }}>{b}</button>)}
-              </div>
+            <div className="filter-stock-row">
+              <label className="field-control">
+                <span className="filter-label">Stock №</span>
+                <input className="number-field stock-filter" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="Напр. CZ60488" />
+              </label>
             </div>
 
-            <div className="filter-group filter-search-group">
-              <span className="filter-label">Модел или stock №</span>
-              <div className="filter-input"><span>⌕</span><input value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="Например Corolla / CZ60488" /></div>
+            <div className="filter-row filter-make-model">
+              <SelectField label="Марка" value={brand} onChange={v => { setBrand(v); setModel(''); setPage(0); }} options={[['Всички','Всички'], ...JAPANESE_BRANDS.map(b => [b,b] as [string,string])] as Array<[string,string]>} pairs />
+              <SelectField label="Модел" value={model} onChange={v => { setModel(v); setPage(0); }} options={[['','Всички'], ...modelOptions.map(option => [option.label, option.label] as [string,string])] as Array<[string,string]>} pairs />
             </div>
 
             <div className="filter-row">
@@ -193,13 +253,6 @@ export default function HomePage() {
               <NumberField label="Мин. места" value={minSeats} onChange={v => { setMinSeats(v); setPage(0); }} placeholder="4" />
             </div>
 
-            <div id="price" className="price-card">
-              <div className="price-card-top"><span className="price-card-label">ПРОЗРАЧНА ЦЕНА</span><span className="info-dot">i</span></div>
-              <div className="price-line"><span>Документи</span><b>по държава</b></div>
-              <div className="price-line"><span>Транспорт</span><b>по обявата</b></div>
-              <div className="price-line accent"><span>Нашата комисионна</span><b>+{euro(OUR_COMMISSION_EUR)}</b></div>
-              <p>Няма скрити посреднически такси. Показваме всяка сума отделно.</p>
-            </div>
             {mobileFiltersOpen && <button className="apply-filters" onClick={() => setMobileFiltersOpen(false)}>Покажи {count.toLocaleString('bg-BG')} автомобила</button>}
           </aside>
 
@@ -223,11 +276,11 @@ export default function HomePage() {
             </>}
 
             <section id="price-guide" className="transparency-banner">
-              <div><span className="banner-kicker">ЯСНА ЦЕНА, БЕЗ ИЗНЕНАДИ</span><h3>Виждаш колко струва колата още преди да я заявиш.</h3><p>Към покупната цена добавяме документната такса за държавата, транспортът по обявата и фиксираната ни комисионна от €1 000.</p></div>
+              <div><span className="banner-kicker">ЯСНА КРАЙНА ЦЕНА</span><h3>Виждаш крайната цена още преди да заявиш автомобила.</h3><p>Всички разходи по вноса (автомобил + документи + транспорт + комисионна) са включени във финалната сума. <br></br> Нашата фиксирана комисионна е €1 000.</p></div>
               <div className="banner-total"><span>Нашата комисионна</span><b>€1 000</b></div>
             </section>
 
-            <footer className="footer">Крайната цена за клиента се изчислява като <b>цена на автомобила + €700 документи + транспортът, посочен за автомобила в обявата + €1 000 наша комисионна</b>. Няма скрити посреднически такси.</footer>
+            <footer className="footer">Крайната цена за клиента включва всички изчислени разходи по вноса (автомобил + документи + транспорт) и <b>€1 000 фиксирана комисионна</b>. Няма скрити посреднически такси.</footer>
           </div>
         </section>
       </main>
@@ -337,8 +390,7 @@ function AuctionCountdown({ endAt }: { endAt: string | null }) {
 
 function VehicleCard({ vehicle, image, favorite, onFavorite }: { vehicle: Vehicle; image?: VehicleImage; favorite: boolean; onFavorite: (id: string) => void }) {
   const total = getImportTotal(vehicle);
-  const transport = getTransportEur(vehicle);
-  const price = getBasePrice(vehicle);
+  const price = total === null ? null : total - OUR_COMMISSION_EUR;
   return (
     <article className="card">
       <Link href={`/vehicles/${encodeURIComponent(vehicle.id)}`} className="photo-link" aria-label={`Виж ${vehicle.make} ${vehicle.model ?? ''}`}>
@@ -352,7 +404,7 @@ function VehicleCard({ vehicle, image, favorite, onFavorite }: { vehicle: Vehicl
         <div className="card-title-row"><Link href={`/vehicles/${encodeURIComponent(vehicle.id)}`}><h3>{vehicle.model || vehicle.main_type || 'Автомобил'}</h3></Link><button className={`favorite ${favorite ? 'is-favorite' : ''}`} aria-label={favorite ? 'Премахни от любими' : 'Добави в любими'} onClick={() => onFavorite(vehicle.id)}>{favorite ? '♥' : '♡'}</button></div>
         <div className="specs"><span className="spec">{vehicle.year ?? '—'}</span><span className="spec">{number(vehicle.mileage_km)} км</span><span className="spec">{fuel(vehicle.fuel_type)}</span><span className="spec">{gear(vehicle.gearbox)}</span></div>
         <div className="location"><span className="location-dot"></span>{vehicle.current_location_city || 'Локацията не е налична'}{vehicle.current_location_country ? `, ${vehicle.current_location_country}` : ''}</div>
-        <div className="price-grid"><div><span className="price-label">Покупна цена</span><span className="price-value">{euro(price)}</span></div><div className="total"><span className="price-label">Крайна цена*</span><span className="price-value">{total === null ? 'Очаква транспорт' : euro(total)}</span>{transport !== null && <div className="transport-note">вкл. {euro(transport)} транспорт</div>}</div></div>
+        <div className="price-grid"><div><span className="price-label">Покупна цена</span><span className="price-value">{euro(price)}</span></div><div className="total"><span className="price-label">Крайна цена*</span><span className="price-value">{total === null ? 'Очаква данни' : euro(total)}</span></div></div>
         <Link className="details-btn" href={`/vehicles/${encodeURIComponent(vehicle.id)}`}><span>Виж автомобила</span><span>→</span></Link>
       </div>
     </article>

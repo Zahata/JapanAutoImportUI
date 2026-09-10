@@ -1,6 +1,6 @@
 {
   "name": "japan-auto-import-ui",
-  "version": "0.6.12",
+  "version": "0.6.18",
   "private": true,
   "scripts": {
     "dev": "next dev",
