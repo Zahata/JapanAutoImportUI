@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import type { Vehicle, VehicleImage } from '../../../lib/types';
-import { getImportTotal, OUR_COMMISSION_EUR } from '../../../lib/pricing';
+import { DISPLAYED_COMMISSION_EUR, getImportTotal } from '../../../lib/pricing';
 
 function euro(v: number | null) { return v === null ? '—' : new Intl.NumberFormat('bg-BG', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v); }
 function integer(v: unknown) { return v === null || v === undefined || v === '' ? '—' : new Intl.NumberFormat('bg-BG').format(Number(v)); }
@@ -77,7 +77,7 @@ export default function VehiclePage() {
   }, [lightboxOpen, images.length]);
 
   const total = vehicle ? getImportTotal(vehicle) : null;
-  const price = total === null ? null : total - OUR_COMMISSION_EUR;
+  const price = total === null ? null : total - DISPLAYED_COMMISSION_EUR;
 
   function goBack() {
     if (window.history.length > 1) router.back();
@@ -118,9 +118,9 @@ export default function VehiclePage() {
           <aside className="detail-price-card">
             <div className="price-card-head"><div><span>КРАЙНА ЦЕНА</span><small>Всички разходи са включени във финалната сума</small></div><span className="price-lock">✓</span></div>
             <Money label="Покупна цена" value={euro(price)} />
-            <Money label="Наша комисионна" value={`+ ${euro(OUR_COMMISSION_EUR)}`} accent />
+            <Money label="Наша комисионна" value={`+ ${euro(DISPLAYED_COMMISSION_EUR)}`} accent />
             <div className="price-total"><span>Общо за клиента</span><strong>{total === null ? 'Очаква данни' : euro(total)}</strong></div>
-            <p className="price-note">Нашата комисионна е фиксирана на €1 000. Останалите разходи по вноса са включени в показаната покупна цена.</p>
+            <p className="price-note">Показаната ни комисионна е фиксирана на €500. Останалите разходи по вноса са включени в показаната покупна цена.</p>
             <button type="button" className="request-large" onClick={() => { window.location.href = 'viber://chat?number=359877747973'; }}>Запитай за автомобила <span>→</span></button>
           </aside>
         </section>

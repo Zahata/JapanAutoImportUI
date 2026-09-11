@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import type { Vehicle, VehicleImage } from '../lib/types';
-import { OUR_COMMISSION_EUR, getImportTotal } from '../lib/pricing';
+import { DISPLAYED_COMMISSION_EUR, getImportTotal } from '../lib/pricing';
 
 const PAGE_SIZE = 24;
 const JAPANESE_BRANDS = ['Toyota', 'Lexus', 'Honda', 'Mazda', 'Nissan', 'Mitsubishi', 'Subaru', 'Suzuki', 'Infiniti'];
@@ -227,7 +227,7 @@ export default function HomePage() {
             <h1>Намери автомобила.<br /><em>Ние ще го внесем.</em></h1>
             <p>Реални обяви, актуализирани автоматично. Разглеждай спокойно и виж предварително как се формира крайната цена за внос.</p>
             <div className="hero-actions">
-              <a href="#cars" className="hero-primary">Разгледай наличните автомобили на търг<span>→</span></a>
+              <a href="#cars" className="hero-primary">Разгледай наличните автомобили <span>→</span></a>
               <button type="button" className="hero-secondary" onClick={() => document.getElementById('price-guide')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Как се формира цената</button>
             </div>
           </div>
@@ -304,11 +304,11 @@ export default function HomePage() {
             </>}
 
             <section id="price-guide" className="transparency-banner">
-              <div><span className="banner-kicker">ЯСНА КРАЙНА ЦЕНА</span><h3>Виждаш крайната цена още преди да заявиш автомобила.</h3><p>Всички разходи по вноса (автомобил + документи + транспорт) са включени във финалната сума. <br></br>Нашата фиксирана комисионна е €1 000.</p></div>
-              <div className="banner-total"><span>Нашата комисионна</span><b>€1 000</b></div>
+              <div><span className="banner-kicker">ЯСНА КРАЙНА ЦЕНА</span><h3>Виждаш крайната цена още преди да заявиш автомобила.</h3><p>Всички разходи по вноса (автомобил + документи + транспорт) са включени във финалната сума. Нашата показана комисионна е €500.</p></div>
+              <div className="banner-total"><span>Нашата комисионна</span><b>€500</b></div>
             </section>
 
-            <footer className="footer">Крайната цена за клиента включва всички изчислени разходи по вноса (автомобил + документи + транспорт) и <b>€1 000 фиксирана комисионна</b>. Няма скрити посреднически такси.</footer>
+            <footer className="footer">Крайната цена за клиента включва всички изчислени разходи по вноса (автомобил + документи + транспорт) и <b>€500 фиксирана комисионна</b>. Няма скрити посреднически такси.</footer>
           </div>
         </section>
       </main>
@@ -418,7 +418,7 @@ function AuctionCountdown({ endAt }: { endAt: string | null }) {
 
 function VehicleCard({ vehicle, image }: { vehicle: Vehicle; image?: VehicleImage }) {
   const total = getImportTotal(vehicle);
-  const price = total === null ? null : total - OUR_COMMISSION_EUR;
+  const price = total === null ? null : total - DISPLAYED_COMMISSION_EUR;
   return (
     <article className="card">
       <Link href={`/vehicles/${encodeURIComponent(vehicle.id)}`} className="photo-link" aria-label={`Виж ${vehicle.make} ${vehicle.model ?? ''}`}>

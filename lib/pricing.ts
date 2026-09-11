@@ -1,6 +1,7 @@
 import type { Vehicle } from './types';
 
 export const OUR_COMMISSION_EUR = 1000;
+export const DISPLAYED_COMMISSION_EUR = 500;
 export const DOCUMENTS_SURCHARGE_EUR = 350;
 export const EXTRA_MARGIN_THRESHOLD_EUR = 10000;
 export const EXTRA_MARGIN_RATE = 0.02;
