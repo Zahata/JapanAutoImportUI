@@ -43,6 +43,7 @@ export default function HomePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [images, setImages] = useState<Record<string, VehicleImage>>({});
   const [vehicleOptions, setVehicleOptions] = useState<VehicleOption[]>([]);
+  const [vehicleOptionsLoaded, setVehicleOptionsLoaded] = useState(false);
   const [brand, setBrand] = useState('Всички');
   const [model, setModel] = useState('');
   const [query, setQuery] = useState('');
@@ -63,15 +64,44 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [filtersRestored, setFiltersRestored] = useState(false);
 
   useEffect(() => {
     try {
-      setFavorites(JSON.parse(localStorage.getItem('jai-favorites') ?? '[]'));
+      const raw = sessionStorage.getItem('jai-filters');
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<Record<string, string | number>>;
+        if (typeof saved.brand === 'string') setBrand(saved.brand);
+        if (typeof saved.model === 'string') setModel(saved.model);
+        if (typeof saved.query === 'string') setQuery(saved.query);
+        if (typeof saved.sort === 'string') setSort(saved.sort);
+        if (typeof saved.yearFrom === 'string') setYearFrom(saved.yearFrom);
+        if (typeof saved.yearTo === 'string') setYearTo(saved.yearTo);
+        if (typeof saved.priceFrom === 'string') setPriceFrom(saved.priceFrom);
+        if (typeof saved.priceTo === 'string') setPriceTo(saved.priceTo);
+        if (typeof saved.mileageTo === 'string') setMileageTo(saved.mileageTo);
+        if (typeof saved.fuelType === 'string') setFuelType(saved.fuelType);
+        if (typeof saved.gearbox === 'string') setGearbox(saved.gearbox);
+        if (typeof saved.bodyType === 'string') setBodyType(saved.bodyType);
+        if (typeof saved.country === 'string') setCountry(saved.country);
+        if (typeof saved.minPower === 'string') setMinPower(saved.minPower);
+        if (typeof saved.minSeats === 'string') setMinSeats(saved.minSeats);
+        if (typeof saved.page === 'number' && Number.isFinite(saved.page)) setPage(Math.max(0, Math.floor(saved.page)));
+      }
     } catch {
-      setFavorites([]);
+      // Ignore invalid saved filter state.
+    } finally {
+      setFiltersRestored(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!filtersRestored) return;
+    sessionStorage.setItem('jai-filters', JSON.stringify({
+      brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo,
+      fuelType, gearbox, bodyType, country, minPower, minSeats, page,
+    }));
+  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
   const filtersActive = Boolean((brand && brand !== 'Всички') || model || query || yearFrom || yearTo || priceFrom || priceTo || mileageTo || fuelType || gearbox || bodyType || country || minPower || minSeats);
@@ -91,7 +121,10 @@ export default function HomePage() {
         collected.push(...((data as VehicleOption[]) ?? []));
         if (data.length < pageSize) break;
       }
-      if (!cancelled) setVehicleOptions(collected);
+      if (!cancelled) {
+        setVehicleOptions(collected);
+        setVehicleOptionsLoaded(true);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -117,10 +150,12 @@ export default function HomePage() {
   const modelLabels = useMemo(() => new Set(modelOptions.map(option => option.label)), [modelOptions]);
 
   useEffect(() => {
+    if (!vehicleOptionsLoaded) return;
     if (model && !modelLabels.has(model)) setModel('');
-  }, [model, modelLabels]);
+  }, [model, modelLabels, vehicleOptionsLoaded]);
 
   useEffect(() => {
+    if (!filtersRestored) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -155,7 +190,7 @@ export default function HomePage() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
+  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
 
   useEffect(() => {
     (async () => {
@@ -180,14 +215,7 @@ export default function HomePage() {
     setBodyType(''); setCountry(''); setMinPower(''); setMinSeats('');
     setSort('last_seen_at.desc');
     setPage(0);
-  }
-
-  function toggleFavorite(id: string) {
-    setFavorites(current => {
-      const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
-      localStorage.setItem('jai-favorites', JSON.stringify(next));
-      return next;
-    });
+    sessionStorage.removeItem('jai-filters');
   }
 
   return (
@@ -270,7 +298,7 @@ export default function HomePage() {
             <div className="results-row"><span><strong>{count.toLocaleString('bg-BG')}</strong> резултата</span><span>Страница <strong>{page + 1}</strong> от <strong>{totalPages}</strong></span></div>
 
             {error ? <div className="error">Не успяхме да заредим автомобилите: {error}</div> : loading ? <div className="loading"><div className="spinner"></div><b>Зареждаме актуалните автомобили…</b><span>Свързваме се с базата</span></div> : <>
-              {vehicles.length > 0 && <section className="cards">{vehicles.map(v => <VehicleCard key={v.id} vehicle={v} image={images[v.id]} favorite={favorites.includes(v.id)} onFavorite={toggleFavorite} />)}</section>}
+              {vehicles.length > 0 && <section className="cards">{vehicles.map(v => <VehicleCard key={v.id} vehicle={v} image={images[v.id]} />)}</section>}
               {!vehicles.length && <div className="empty"><div className="empty-icon">⌕</div><h3>Няма намерени автомобили</h3><p>Промени филтрите или търсенето, за да видиш повече резултати.</p><button onClick={clearFilters}>Изчисти всички филтри</button></div>}
               <div className="pagination"><button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>← Предишна</button><span className="page-count">{page + 1} / {totalPages}</span><button disabled={page >= totalPages - 1} onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}>Следваща →</button></div>
             </>}
@@ -388,7 +416,7 @@ function AuctionCountdown({ endAt }: { endAt: string | null }) {
   </span>;
 }
 
-function VehicleCard({ vehicle, image, favorite, onFavorite }: { vehicle: Vehicle; image?: VehicleImage; favorite: boolean; onFavorite: (id: string) => void }) {
+function VehicleCard({ vehicle, image }: { vehicle: Vehicle; image?: VehicleImage }) {
   const total = getImportTotal(vehicle);
   const price = total === null ? null : total - OUR_COMMISSION_EUR;
   return (
@@ -401,7 +429,7 @@ function VehicleCard({ vehicle, image, favorite, onFavorite }: { vehicle: Vehicl
       </Link>
       <div className="card-body">
         <div className="maker-line"><span>{vehicle.make}</span><span className="stock">{vehicle.stock_number}</span></div>
-        <div className="card-title-row"><Link href={`/vehicles/${encodeURIComponent(vehicle.id)}`}><h3>{vehicle.model || vehicle.main_type || 'Автомобил'}</h3></Link><button className={`favorite ${favorite ? 'is-favorite' : ''}`} aria-label={favorite ? 'Премахни от любими' : 'Добави в любими'} onClick={() => onFavorite(vehicle.id)}>{favorite ? '♥' : '♡'}</button></div>
+        <div className="card-title-row"><Link href={`/vehicles/${encodeURIComponent(vehicle.id)}`}><h3>{vehicle.model || vehicle.main_type || 'Автомобил'}</h3></Link></div>
         <div className="specs"><span className="spec">{vehicle.year ?? '—'}</span><span className="spec">{number(vehicle.mileage_km)} км</span><span className="spec">{fuel(vehicle.fuel_type)}</span><span className="spec">{gear(vehicle.gearbox)}</span></div>
         <div className="location"><span className="location-dot"></span>{vehicle.current_location_city || 'Локацията не е налична'}{vehicle.current_location_country ? `, ${vehicle.current_location_country}` : ''}</div>
         <div className="price-grid"><div><span className="price-label">Покупна цена</span><span className="price-value">{euro(price)}</span></div><div className="total"><span className="price-label">Крайна цена*</span><span className="price-value">{total === null ? 'Очаква данни' : euro(total)}</span></div></div>
