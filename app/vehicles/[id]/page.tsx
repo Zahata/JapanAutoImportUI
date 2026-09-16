@@ -84,6 +84,17 @@ export default function VehiclePage() {
     else router.push('/');
   }
 
+  async function copyVehicleLink() {
+    const stockId = String(vehicle?.id || id || '');
+    const shareUrl = `https://japanautoimportui.vercel.app/vehicles/${encodeURIComponent(stockId)}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      window.alert('Линкът към автомобила е копиран.');
+    } catch {
+      window.prompt('Копирай линка към автомобила:', shareUrl);
+    }
+  }
+
 
   if (error) return <div className="detail-page"><div className="detail-container"><Link className="back" href="/">← Назад към автомобилите</Link><div className="error">{error}</div></div></div>;
   if (!vehicle) return <div className="detail-page"><div className="detail-container"><Link className="back" href="/">← Назад към автомобилите</Link><div className="loading">Зареждаме автомобила…</div></div></div>;
@@ -122,6 +133,7 @@ export default function VehiclePage() {
             <div className="price-total"><span>Общо за клиента</span><strong>{total === null ? 'Очаква данни' : euro(total)}</strong></div>
             <p className="price-note">Показаната ни комисионна е фиксирана на €500. Останалите разходи по вноса са включени в показаната покупна цена.</p>
             <button type="button" className="request-large" onClick={() => { window.location.href = 'viber://chat?number=359877747973'; }}>Запитай за автомобила <span>→</span></button>
+            <button type="button" className="copy-vehicle-link" onClick={copyVehicleLink}>Копиране на линк към автомобила <span>⧉</span></button>
           </aside>
         </section>
 

@@ -238,3 +238,7 @@ body:has(.gallery-lightbox),body:has(.inquiry-modal){overflow:hidden}
 .filter-stock-row .field-control{
   width:100%;
 }
+
+/* v0.6.22: shared vehicle link action */
+.copy-vehicle-link{width:100%;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:#fff;color:#2e2f34;border-radius:13px;padding:12px 16px;margin-top:9px;font-size:11px;font-weight:900;transition:border-color .18s ease,background .18s ease}
+.copy-vehicle-link:hover{border-color:#cfcfcb;background:#fafaf8}
