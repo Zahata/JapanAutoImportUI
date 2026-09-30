@@ -255,7 +255,18 @@ export default function HomePage() {
 
             <div className="filter-row filter-make-model">
               <SelectField label="Марка" value={brand} onChange={v => { setBrand(v); setModel(''); setPage(0); }} options={[['Всички','Всички'], ...JAPANESE_BRANDS.map(b => [b,b] as [string,string])] as Array<[string,string]>} pairs />
-              <SelectField label="Модел" value={model} onChange={v => { setModel(v); setPage(0); }} options={[['','Всички'], ...modelOptions.map(option => [option.label, option.label] as [string,string])] as Array<[string,string]>} pairs />
+              <SelectField
+                label="Модел"
+                value={model}
+                onChange={v => { setModel(v); setPage(0); }}
+                options={
+                  brand === 'Всички'
+                    ? [['','Първо избери марка']]
+                    : [['','Всички'], ...modelOptions.map(option => [option.label, option.label] as [string,string])]
+                }
+                pairs
+                disabled={brand === 'Всички'}
+              />
             </div>
 
             <div className="filter-row">
@@ -329,6 +340,7 @@ function SelectField({
   onChange: (value: string) => void;
   options: string[] | Array<[string, string]>;
   pairs?: boolean;
+  disabled?: boolean;
 }) {
   const normalized: Array<{ value: string; label: string }> = pairs
     ? (options as Array<[string, string]>).map(([v, l]) => ({ value: v, label: l }))
@@ -337,7 +349,7 @@ function SelectField({
   return (
     <label className="field-control">
       <span className="filter-label">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>
         {normalized.map((option) => (
           <option key={`${option.value}-${option.label}`} value={option.value}>
             {option.label}
