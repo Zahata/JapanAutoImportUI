@@ -50,8 +50,6 @@ export default function HomePage() {
   const [sort, setSort] = useState('last_seen_at.desc');
   const [yearFrom, setYearFrom] = useState('');
   const [yearTo, setYearTo] = useState('');
-  const [priceFrom, setPriceFrom] = useState('');
-  const [priceTo, setPriceTo] = useState('');
   const [mileageTo, setMileageTo] = useState('');
   const [fuelType, setFuelType] = useState('');
   const [gearbox, setGearbox] = useState('');
@@ -77,8 +75,6 @@ export default function HomePage() {
         if (typeof saved.sort === 'string') setSort(saved.sort);
         if (typeof saved.yearFrom === 'string') setYearFrom(saved.yearFrom);
         if (typeof saved.yearTo === 'string') setYearTo(saved.yearTo);
-        if (typeof saved.priceFrom === 'string') setPriceFrom(saved.priceFrom);
-        if (typeof saved.priceTo === 'string') setPriceTo(saved.priceTo);
         if (typeof saved.mileageTo === 'string') setMileageTo(saved.mileageTo);
         if (typeof saved.fuelType === 'string') setFuelType(saved.fuelType);
         if (typeof saved.gearbox === 'string') setGearbox(saved.gearbox);
@@ -98,13 +94,13 @@ export default function HomePage() {
   useEffect(() => {
     if (!filtersRestored) return;
     sessionStorage.setItem('jai-filters', JSON.stringify({
-      brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo,
+      brand, model, query, sort, yearFrom, yearTo, mileageTo,
       fuelType, gearbox, bodyType, country, minPower, minSeats, page,
     }));
-  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
+  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const filtersActive = Boolean((brand && brand !== 'Всички') || model || query || yearFrom || yearTo || priceFrom || priceTo || mileageTo || fuelType || gearbox || bodyType || country || minPower || minSeats);
+  const filtersActive = Boolean((brand && brand !== 'Всички') || model || query || yearFrom || yearTo || mileageTo || fuelType || gearbox || bodyType || country || minPower || minSeats);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,8 +175,6 @@ export default function HomePage() {
       if (mileageTo) req = req.lte('mileage_km', Number(mileageTo));
       if (minPower) req = req.gte('power_hp', Number(minPower));
       if (minSeats) req = req.gte('seats', Number(minSeats));
-      if (priceFrom) req = req.gte('search_price', Number(priceFrom));
-      if (priceTo) req = req.lte('search_price', Number(priceTo));
       const [col, dir] = sort.split('.') as ['last_seen_at' | 'search_price' | 'year' | 'mileage_km', 'asc' | 'desc'];
       const res = await req.order(col, { ascending: dir === 'asc', nullsFirst: false }).range(from, to);
       if (cancelled) return;
@@ -190,7 +184,7 @@ export default function HomePage() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, priceFrom, priceTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
+  }, [filtersRestored, brand, model, query, sort, yearFrom, yearTo, mileageTo, fuelType, gearbox, bodyType, country, minPower, minSeats, page]);
 
   useEffect(() => {
     (async () => {
@@ -208,7 +202,6 @@ export default function HomePage() {
     setModel('');
     setQuery('');
     setYearFrom(''); setYearTo('');
-    setPriceFrom(''); setPriceTo('');
     setMileageTo('');
     setFuelType('');
     setGearbox('');
@@ -271,10 +264,6 @@ export default function HomePage() {
             <SelectField label="Тип купе" value={bodyType} onChange={v => { setBodyType(v); setPage(0); }} options={[['','Всички'], ...BODY_OPTIONS] as Array<[string, string]>} pairs />
             <SelectField label="Държава на автомобила" value={country} onChange={v => { setCountry(v); setPage(0); }} options={[['','Всички'], ...COUNTRY_OPTIONS] as Array<[string, string]>} pairs />
 
-            <div className="filter-row">
-              <NumberField label="Покупна цена от (€)" value={priceFrom} onChange={v => { setPriceFrom(v); setPage(0); }} placeholder="0" />
-              <NumberField label="Покупна цена до (€)" value={priceTo} onChange={v => { setPriceTo(v); setPage(0); }} placeholder="50 000" />
-            </div>
             <NumberField label="Макс. пробег (км)" value={mileageTo} onChange={v => { setMileageTo(v); setPage(0); }} placeholder="200 000" />
             <div className="filter-row">
               <NumberField label="Мин. мощност (к.с.)" value={minPower} onChange={v => { setMinPower(v); setPage(0); }} placeholder="100" />
